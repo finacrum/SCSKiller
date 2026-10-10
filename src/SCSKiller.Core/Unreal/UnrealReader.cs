@@ -187,8 +187,20 @@ public sealed partial class UnrealReader(string? dataDir = null) : IEngineReader
         }
     }
 
-    static AbstractAesVfsReader OpenContainer(string path, VersionContainer versions) => path.EndsWith(".utoc", StringComparison.OrdinalIgnoreCase)
-        ? new IoStoreReader(path, EIoStoreTocReadOptions.ReadDirectoryIndex, versions) : new PakFileReader(path, versions);
+    static AbstractAesVfsReader OpenContainer(string path, VersionContainer versions)
+    {
+        using var provider = new DefaultFileProvider(
+            Path.GetDirectoryName(path)!,
+            SearchOption.TopDirectoryOnly,
+            versions);
+
+        AbstractAesVfsReader reader = path.EndsWith(".utoc", StringComparison.OrdinalIgnoreCase)
+            ? new IoStoreReader(path, EIoStoreTocReadOptions.ReadDirectoryIndex, versions)
+            : new PakFileReader(path, versions);
+
+        reader.CustomEncryption = provider.CustomEncryption;
+        return reader;
+    }
 
     /// <summary>Shader library and global shader cache platforms, the containers we can't read (encrypted), and the RHI
     /// config files: .utoc by header and name scan, .pak one index at a time (a full mount of a big game is ~1 GB; this peaks
